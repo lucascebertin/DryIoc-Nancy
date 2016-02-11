@@ -211,7 +211,6 @@ namespace Nancy.SelfHosted.HelloWorld
 
         protected override void ConfigureRequestContainer(IContainer container, NancyContext context)
         {
-            //container.Register<ITest, Test>(Reuse.InWebRequest);
             base.ConfigureRequestContainer(container, context);
         }
     }
