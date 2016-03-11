@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nancy.Bootstrappers.DryIoc", "Nancy.Bootstrappers.DryIoc\Nancy.Bootstrappers.DryIoc.csproj", "{D3BB0CF5-9F7A-4A4E-AD72-6475765471E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nancy.SelfHosted.HelloWorld", "Nancy.SelfHosted.HelloWorld\Nancy.SelfHosted.HelloWorld.csproj", "{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,14 @@ Global
 		{D3BB0CF5-9F7A-4A4E-AD72-6475765471E8}.MonoRelease|Any CPU.Build.0 = Release|Any CPU
 		{D3BB0CF5-9F7A-4A4E-AD72-6475765471E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3BB0CF5-9F7A-4A4E-AD72-6475765471E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.MonoDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.MonoDebug|Any CPU.Build.0 = Debug|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.MonoRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.MonoRelease|Any CPU.Build.0 = Release|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A5A218F-2EF0-4AB8-9877-BE4B08F7B0A5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
