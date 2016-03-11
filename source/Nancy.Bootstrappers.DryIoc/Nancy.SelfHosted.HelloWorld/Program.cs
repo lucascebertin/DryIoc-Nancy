@@ -10,34 +10,49 @@ namespace Nancy.SelfHosted.HelloWorld
     {
         static void Main(string[] args)
         {
-            using (var host = new NancyHost(new Bootstrapper(), new Uri("http://localhost:1234")))
+            using (var host = new NancyHost(new Bootstrapper(), new Uri("http://localhost:5050")))
             {
                 host.Start();
-                Process.Start("http://localhost:1234/home");
+                Process.Start("http://localhost:5050/home");
                 Console.WriteLine("The server is listening on: localhost:1234");
                 Console.ReadLine();
             }
         }
     }
 
-    public interface ITest
+    public interface ITransient
     {
         void Test123();
+
+        IRequestScoped RequestScoped { get; }
     }
 
-    public class Test : ITest
+    public class Transient : ITransient
     {
+        public IRequestScoped RequestScoped { get; private set; }
+
+        public Transient(IRequestScoped requestScoped)
+        {
+            RequestScoped = requestScoped;
+        }
+
         public void Test123()
         {
-            
         }
+    }
+
+    public interface IRequestScoped { }
+
+    public class RequestScoped : IRequestScoped
+    {
     }
 
     public class Bootstrapper : DryIocNancyBootstrapper
     {
         protected override void ConfigureApplicationContainer(IContainer existingContainer)
         {
-            existingContainer.Register<ITest, Test>(Reuse.Transient);
+            existingContainer.Register<ITransient, Transient>(Reuse.Transient);
+            existingContainer.Register<IRequestScoped, RequestScoped>(Reuse.InWebRequest);
             base.ConfigureApplicationContainer(existingContainer);
         }
 

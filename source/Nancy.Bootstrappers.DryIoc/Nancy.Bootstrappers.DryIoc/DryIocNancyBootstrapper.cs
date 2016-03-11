@@ -3,24 +3,20 @@ using Nancy.Bootstrapper;
 using Nancy.Diagnostics;
 using System;
 using System.Collections.Generic;
+using Nancy.ViewEngines;
 
 namespace Nancy.Bootstrappers.DryIoc
 {
     public abstract class DryIocNancyBootstrapper : NancyBootstrapperWithRequestContainerBase<IContainer>
     {
-        private List<Type> _moduleTypes;
-
         protected override IContainer CreateRequestContainer(NancyContext context)
         {
-            return ApplicationContainer.OpenScope();
+            return ApplicationContainer.OpenScope(Reuse.WebRequestScopeName);
         }
 
         protected override IEnumerable<INancyModule> GetAllModules(IContainer container)
         {
-            foreach (var type in _moduleTypes)
-                container.New(type);
-
-            return container.ResolveMany<INancyModule>().ToArrayOrSelf();
+            return container.Resolve<IEnumerable<INancyModule>>();
         }
 
         protected override IContainer GetApplicationContainer()
@@ -47,15 +43,12 @@ namespace Nancy.Bootstrappers.DryIoc
 
         protected override INancyModule GetModule(IContainer container, Type moduleType)
         {
-            var typeFullName = moduleType.FullName;
+            var moduleKey = moduleType.FullName;
 
-            if (container.IsRegistered<INancyModule>(serviceKey: typeFullName))
-                return container.Resolve<INancyModule>(serviceKey: typeFullName);
+            if (!container.IsRegistered<INancyModule>(moduleKey))
+                RegisterRequestContainerModules(container, new[] { new ModuleRegistration(moduleType) });
 
-            var instance = (INancyModule)container.New(moduleType);
-            container.RegisterInstance(instance, serviceKey: typeFullName);
-
-            return instance;
+            return container.Resolve<INancyModule>(moduleKey);
         }
 
         protected override IEnumerable<IRegistrations> GetRegistrationTasks()
@@ -65,48 +58,24 @@ namespace Nancy.Bootstrappers.DryIoc
 
         protected override IEnumerable<IRequestStartup> RegisterAndGetRequestStartupTasks(IContainer container, Type[] requestStartupTypes)
         {
-            foreach (var requestStartupType in requestStartupTypes)
-                container.Register(
-                    serviceType: typeof(IRequestStartup),
-                    implementationType: requestStartupType,
-                    reuse: Reuse.Singleton
-                );
-
+            container.RegisterMany(requestStartupTypes, Reuse.Singleton, serviceTypeCondition: t => t == typeof(IRequestStartup));
             return container.Resolve<IEnumerable<IRequestStartup>>();
         }
 
         protected override void RegisterBootstrapperTypes(IContainer applicationContainer)
         {
             applicationContainer.RegisterInstance<INancyModuleCatalog>(this);
+            applicationContainer.Register<IFileSystemReader, DefaultFileSystemReader>(Reuse.Singleton);
         }
 
-        protected override void RegisterCollectionTypes(IContainer container, IEnumerable<CollectionTypeRegistration> collectionTypeRegistrationsn)
+        protected override void RegisterCollectionTypes(IContainer container, IEnumerable<CollectionTypeRegistration> collectionTypeRegistrations)
         {
-            foreach (var collectionTypeRegistration in collectionTypeRegistrationsn)
+            var isScopedContainer = IsScoped(container);
+            foreach (var registration in collectionTypeRegistrations)
             {
-                foreach (var implementationType in collectionTypeRegistration.ImplementationTypes)
+                foreach (var implementationType in registration.ImplementationTypes)
                 {
-                    switch (collectionTypeRegistration.Lifetime)
-                    {
-                        case Lifetime.Transient:
-                            container.Register(
-                                collectionTypeRegistration.RegistrationType,
-                                implementationType,
-                                reuse: Reuse.Transient
-                            );
-                            break;
-                        case Lifetime.Singleton:
-                            container.Register(
-                                collectionTypeRegistration.RegistrationType,
-                                implementationType,
-                                reuse: Reuse.Singleton
-                            );
-                            break;
-                        case Lifetime.PerRequest:
-                            throw new InvalidOperationException("Unable to directly register a per request lifetime.");
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
+                    Register(container, registration.RegistrationType, implementationType, registration.Lifetime, isScopedContainer);
                 }
             }
         }
@@ -119,11 +88,8 @@ namespace Nancy.Bootstrappers.DryIoc
 
         protected override void RegisterRequestContainerModules(IContainer container, IEnumerable<ModuleRegistration> moduleRegistrationTypes)
         {
-            _moduleTypes = new List<Type>();
-
             foreach (var moduleRegistrationType in moduleRegistrationTypes)
             {
-                _moduleTypes.Add(moduleRegistrationType.ModuleType);
                 container.Register(
                     typeof(INancyModule),
                     moduleRegistrationType.ModuleType,
@@ -135,31 +101,38 @@ namespace Nancy.Bootstrappers.DryIoc
 
         protected override void RegisterTypes(IContainer container, IEnumerable<TypeRegistration> typeRegistrations)
         {
-            foreach (var typeRegistration in typeRegistrations)
+            var isScopedContainer = IsScoped(container);
+            foreach (var registration in typeRegistrations)
             {
-                switch (typeRegistration.Lifetime)
-                {
-                    case Lifetime.Transient:
-                        container.Register(
-                            typeRegistration.RegistrationType,
-                            typeRegistration.ImplementationType,
-                            reuse: Reuse.Transient,
-                            made: FactoryMethod.ConstructorWithResolvableArguments
-                        );
-                        break;
-                    case Lifetime.Singleton:
-                        container.Register(
-                            typeRegistration.RegistrationType,
-                            typeRegistration.ImplementationType,
-                            reuse: Reuse.Singleton,
-                            made: FactoryMethod.ConstructorWithResolvableArguments
-                        );
-                        break;
-                    case Lifetime.PerRequest:
-                        throw new InvalidOperationException("Unable to directly register a per request lifetime.");
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                Register(container, registration.RegistrationType, registration.ImplementationType, registration.Lifetime, isScopedContainer);
+            }
+        }
+
+        private bool IsScoped(IContainer container)
+        {
+            // note: Replace with native method when supported in DryIoc 2.3
+            return container.ContainerWeakRef.Scopes.GetCurrentScope() != null;
+        }
+
+        private static void Register(IRegistrator registrator, Type registrationType, Type implementationType, Lifetime lifetime, 
+            bool isScopedContainer)
+        {
+            var reuse = MapLifetimeToReuse(isScopedContainer ? Lifetime.PerRequest : lifetime);
+            registrator.Register(registrationType, implementationType, reuse);
+        }
+
+        private static IReuse MapLifetimeToReuse(Lifetime lifetime)
+        {
+            switch (lifetime)
+            {
+                case Lifetime.Transient:
+                    return Reuse.Transient;
+                case Lifetime.Singleton:
+                    return Reuse.Singleton;
+                case Lifetime.PerRequest:
+                    return Reuse.InWebRequest;
+                default:
+                    throw new ArgumentOutOfRangeException("lifetime", lifetime, "Not supported lifetime: " + lifetime);
             }
         }
     }

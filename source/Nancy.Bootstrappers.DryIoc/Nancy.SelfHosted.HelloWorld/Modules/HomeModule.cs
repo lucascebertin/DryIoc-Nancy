@@ -1,19 +1,24 @@
-﻿using System.Threading.Tasks;
+﻿using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Nancy.SelfHosted.HelloWorld.Modules
 {
     public class HomeModule : NancyModule
     {
-        private readonly ITest _testInjected;
+        private readonly ITransient _transient;
+        private readonly IRequestScoped _requestScoped;
 
-        public HomeModule(ITest test) : base("/home")
+        public HomeModule(ITransient transient, IRequestScoped requestScoped) : base("/home")
         {
-            _testInjected = test;
+            _transient = transient;
+            _requestScoped = requestScoped;
+            Debug.Assert(_requestScoped == _transient.RequestScoped);
 
             Get["/"] = _ =>
             {
                 var viewBag = new DynamicDictionary();
-                viewBag.Add("test", 1);
+                viewBag.Add("Transient", _transient);
+                viewBag.Add("RequestScoped", _requestScoped);
                 return View["home/index", viewBag];
             };
 
